@@ -6,9 +6,9 @@ import tqdm
 from torch.utils.data import DataLoader
 from torchsummary import summary
 
-# import wandb
+import wandb
 from data import MNISTDataset
-from utils import MLP, compute_stats, copy_weights_mlp, prune_mlp, reinit_mlp
+from utils import MLP, compute_stats, copy_weights_mlp, prune_mlp, reinit_mlp, Net2
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 def loop_dataloader(dataloader):
@@ -81,7 +81,7 @@ def train(
         loss = loss_inst(logit_batch, y_batch)
         if dataloader_val is not None:
             print(f"Loss {loss}")
-            # wandb.log({"loss": loss}, step=it)
+            wandb.log({"loss": loss}, step=it)
 
         optimizer.zero_grad()
         loss.backward()
@@ -97,7 +97,7 @@ def train(
 
             is_equal_t = torch.cat(is_equal)
             acc = is_equal_t.sum() / len(is_equal_t)
-            # wandb.log({"accuracy_val": acc}, step=it)
+            wandb.log({"accuracy_val": acc}, step=it)
             print(f" Acc {acc} step {it}")
 
         it += 1
@@ -168,7 +168,7 @@ def main(argv=None):
         "--wandb-entity",
         help="W&B entity",
         type=str,
-        default="mildlyoverfitted",
+        default="insane_gupta",
     )
     parser.add_argument(
         "--wandb-project",
@@ -177,12 +177,12 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
-    # wandb.init(
-    #     project=args.wandb_project,
-    #     entity=args.wandb_entity,
-    #     config=vars(args),
-    # )
-    # wandb.define_metric("accuracy_val", summary="max")
+    wandb.init(
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        config=vars(args),
+    )
+    wandb.define_metric("accuracy_val", summary="max")
 
     dataset_train = MNISTDataset(
         "data",
@@ -212,7 +212,6 @@ def main(argv=None):
     )
 
     mlp = MLP(**kwargs)
-
     mlp_copy = MLP(**kwargs)
     mlp_copy.load_state_dict(mlp.state_dict())
 
@@ -245,10 +244,10 @@ def main(argv=None):
             stats = compute_stats(mlp)
             for name, stat in stats.items():
                 summary_name = f"{name}_pruneiter={prune_it}"
-                # wandb.run.summary[summary_name] = stat
+                wandb.run.summary[summary_name] = stat
 
-            summary(mlp, (1, 28, 28),
-                    device=device.type)
+            # summary(mlp, (1, 28, 28),
+            #         device=device.type)
 
 
     if args.reinitialize == "true":
